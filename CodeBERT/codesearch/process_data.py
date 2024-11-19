@@ -8,7 +8,7 @@ import json
 import numpy as np
 from more_itertools import chunked
 
-DATA_DIR='../data/codesearch'
+DATA_DIR='/datasets/codesearch'
 
 def format_str(string):
     for char in ['\r\n', '\r', '\n']:
@@ -23,15 +23,23 @@ def preprocess_test_data(language, test_batch_size=1000):
         data = pf.readlines()  
 
     idxs = np.arange(len(data))
-    data = np.array(data, dtype=np.object)
+    data = np.array(data, dtype=object)
 
     np.random.seed(0)   # set random seed so that random things are reproducible
     np.random.shuffle(idxs)
     data = data[idxs]
     batched_data = chunked(data, test_batch_size)
 
-    print("start processing")
+    data_path = os.path.join(DATA_DIR, 'test/{}'.format(language))
+    if not os.path.exists(data_path):
+        os.makedirs(data_path)
+    
+    print(f"start processing {language}")
     for batch_idx, batch_data in enumerate(batched_data):
+        file_path = os.path.join(data_path, 'batch_{}.txt'.format(batch_idx))
+        if os.path.exists(file_path):
+            print(f"Found {file_path} exists, skipping")
+            continue
         if len(batch_data) < test_batch_size:
             break # the last batch is smaller than the others, exclude.
         examples = []
@@ -46,11 +54,6 @@ def preprocess_test_data(language, test_batch_size=1000):
                 example = '<CODESPLIT>'.join(example)
                 examples.append(example)
 
-        data_path = os.path.join(DATA_DIR, 'test/{}'.format(language))
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-        file_path = os.path.join(data_path, 'batch_{}.txt'.format(batch_idx))
-        print(file_path)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines('\n'.join(examples))
 
